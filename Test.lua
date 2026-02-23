@@ -206,11 +206,11 @@ local function showKeyScreen(callback)
         Position = UDim2.new(0.5, -180, 0.5, -105)
     }, 0.4, Enum.EasingStyle.Back)
 
-    makeLabel(kf, "🔑  Entrez votre clé",
+    makeLabel(kf, "Welcome to MNCStorm 🏎 ",
         UDim2.new(1, 0, 0, 48), UDim2.new(0, 0, 0, 0),
         Enum.Font.GothamBold, 16, CONFIG.Text)
 
-    makeLabel(kf, "Clé Free / Premium / Admin",
+    makeLabel(kf, "Please enter your key :) !",
         UDim2.new(1, -20, 0, 20), UDim2.new(0, 10, 0, 46),
         Enum.Font.Gotham, 11, CONFIG.TextDim)
 
@@ -812,4 +812,5 @@ function Library:CreateWindow(title, requireKey, onReady)
 end
 
 return Library
+
 
