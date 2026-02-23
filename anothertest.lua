@@ -133,7 +133,7 @@ local function tweenToLocation(car, locations, plr)
     getfenv().cancelman = nil
 end
 
--- Variables
+-- Variables globales
 local blackScreen = nil
 local modeActuel = "Normal"
 local speedMultiplier = {Normal = 1, Rapide = 1.5, Turbo = 2.5}
@@ -151,156 +151,150 @@ local frames = {
 }
 
 -- ═══════════════════════════════════════
+--     FONCTION QUI CONSTRUIT LA GUI
+-- ═══════════════════════════════════════
+-- ⚠️ CORRECTION PRINCIPALE : tout le code GUI est dans
+-- une fonction appelée en CALLBACK après validation de la clé
+local function buildGUI(Window)
+
+    -- ═══════════════════════════════════════
+    --         TAB 1 — AUTO FARM
+    -- ═══════════════════════════════════════
+    local tab1 = Window:AddTab("Farm")
+
+    tab1:AddLabel("== Auto Farm ==")
+    tab1:AddSeparator("Paramètres")
+
+    tab1:AddSlider("Vitesse", "Vitesse du véhicule", 100, 1000, 300, function(value)
+        getfenv().speed = value * (speedMultiplier[modeActuel] or 1)
+    end)
+
+    tab1:AddDropdown("Mode", {"Normal", "Rapide", "Turbo"}, function(option)
+        modeActuel = option
+        local baseSpeed = getfenv().speed or 300
+        getfenv().speed = baseSpeed * (speedMultiplier[option] or 1)
+        warn("Mode : " .. option .. " | Vitesse : " .. tostring(getfenv().speed))
+    end)
+
+    tab1:AddSeparator("Farm Principal")
+
+    tab1:AddToggle("Auto Farm", "Fait les trajets automatiquement", false, function(state)
+        getfenv().auto = state
+        if state then
+            local plr = game.Players.LocalPlayer
+            hideWorkspaceObjects(plr)
+            task.wait()
+            task.spawn(function()
+                while getfenv().auto do
+                    local success, err = pcall(function()
+                        local plr = game.Players.LocalPlayer
+                        local hum = plr.Character.Humanoid
+                        local car = hum.SeatPart.Parent
+                        getfenv().car = car
+                        ensureGroundPart()
+                        car.PrimaryPart = car.Body:FindFirstChild("#Weight")
+                        for i, v in pairs(frames) do
+                            if not getfenv().auto then break end
+                            tweenToPosition(car, v + Vector3.new(0, 5, 0), getfenv().speed or 300)
+                        end
+                    end)
+                    if not success then
+                        warn("Auto Farm erreur : " .. tostring(err))
+                        task.wait(2)
+                    end
+                end
+            end)
+        else
+            if getfenv().tween then getfenv().tween:Cancel() end
+            restoreWorkspaceObjects()
+        end
+    end)
+
+    tab1:AddSeparator("Event")
+
+    tab1:AddToggle("Auto Deliver [Event]", "Livre les colis automatiquement", false, function(state)
+        _G.test = state
+        if state then
+            local plr = game.Players.LocalPlayer
+            hideWorkspaceObjects(plr)
+            task.wait()
+            task.spawn(function()
+                while _G.test do
+                    task.wait()
+                    local success, err = pcall(function()
+                        ensureGroundPart()
+                        local plr = game.Players.LocalPlayer
+                        local car = plr.Character.Humanoid.SeatPart.Parent
+                        getfenv().car = car
+                        car.PrimaryPart = car.Body:FindFirstChild("#Weight")
+                        local locations
+                        local maxdistance = math.huge
+                        for i, v in pairs(workspace:GetChildren()) do
+                            if v.Name == "" and v:FindFirstChild("Highlight") then
+                                local dist = (plr.Character.PrimaryPart.Position - v.WorldPivot.Position).magnitude
+                                if dist < maxdistance then
+                                    maxdistance = dist
+                                    locations = v
+                                end
+                            end
+                        end
+                        if locations then
+                            tweenToLocation(car, locations, plr)
+                        elseif workspace:FindFirstChild("GiftPickup") then
+                            repeat
+                                task.wait()
+                                car.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
+                                car:PivotTo(CFrame.new(workspace.GiftPickup.WorldPivot.Position) + Vector3.new(0, 5, 0))
+                            until reachedMax(car)
+                        end
+                    end)
+                    if not success then
+                        warn("Auto Deliver erreur : " .. tostring(err))
+                        task.wait(2)
+                    end
+                end
+            end)
+        else
+            if getfenv().tween then getfenv().tween:Cancel() end
+            restoreWorkspaceObjects()
+        end
+    end)
+
+    -- ═══════════════════════════════════════
+    --         TAB 2 — VISUEL
+    -- ═══════════════════════════════════════
+    local tab2 = Window:AddTab("Visuel")
+
+    tab2:AddLabel("== Options Visuelles ==")
+    tab2:AddSeparator("Écran")
+
+    tab2:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
+        if state then
+            blackScreen = Instance.new("ScreenGui")
+            blackScreen.Name = "BlackScreen"
+            blackScreen.DisplayOrder = -1000
+            blackScreen.Parent = game.CoreGui
+            local frame = Instance.new("Frame")
+            frame.Size = UDim2.new(1, 0, 1, 0)
+            frame.BackgroundColor3 = Color3.new(0, 0, 0)
+            frame.BorderSizePixel = 0
+            frame.Parent = blackScreen
+        else
+            if blackScreen then
+                blackScreen:Destroy()
+                blackScreen = nil
+            end
+        end
+    end)
+end
+
+-- ═══════════════════════════════════════
 --          CHARGEMENT BIBLIOTHÈQUE
 -- ═══════════════════════════════════════
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/zuqothempos/testt/refs/heads/main/Test.lua"))()
-local Window = Library:CreateWindow("Midnight Chasers", true)
 
--- ═══════════════════════════════════════
---         TAB 1 — AUTO FARM
--- ═══════════════════════════════════════
-local tab1 = Window:AddTab("Farm")
-
-tab1:AddLabel("== Auto Farm ==")
-tab1:AddSeparator("Paramètres")
-
--- Slider vitesse
-tab1:AddSlider("Vitesse", "Vitesse du véhicule", 100, 1000, 300, function(value)
-    getfenv().speed = value * (speedMultiplier[modeActuel] or 1)
-end)
-
--- Dropdown mode
-tab1:AddDropdown("Mode", {"Normal", "Rapide", "Turbo"}, function(option)
-    modeActuel = option
-    local baseSpeed = getfenv().speed or 300
-    getfenv().speed = baseSpeed * (speedMultiplier[option] or 1)
-    warn("Mode changé : " .. option .. " | Vitesse : " .. tostring(getfenv().speed))
-end)
-
-tab1:AddSeparator("Farm Principal")
-
--- Toggle Auto Farm
-tab1:AddToggle("Auto Farm", "Fait les trajets automatiquement", false, function(state)
-    getfenv().auto = state
-
-    if state then
-        local plr = game.Players.LocalPlayer
-        hideWorkspaceObjects(plr)
-        task.wait()
-
-        task.spawn(function()
-            while getfenv().auto do
-                local success, err = pcall(function()
-                    local plr = game.Players.LocalPlayer
-                    local chr = plr.Character
-                    local hum = chr.Humanoid
-                    local car = hum.SeatPart.Parent
-                    getfenv().car = car
-                    ensureGroundPart()
-                    car.PrimaryPart = car.Body:FindFirstChild("#Weight")
-
-                    for i, v in pairs(frames) do
-                        if not getfenv().auto then break end
-                        local speed = getfenv().speed or 300
-                        local pos = v + Vector3.new(0, 5, 0)
-                        tweenToPosition(car, pos, speed)
-                    end
-                end)
-
-                if not success then
-                    warn("Auto Farm erreur : " .. tostring(err))
-                    task.wait(2)
-                end
-            end
-        end)
-    else
-        if getfenv().tween then getfenv().tween:Cancel() end
-        restoreWorkspaceObjects()
-    end
-end)
-
-tab1:AddSeparator("Event")
-
--- Toggle Auto Deliver
-tab1:AddToggle("Auto Deliver [Event]", "Livre les colis automatiquement", false, function(state)
-    _G.test = state
-
-    if state then
-        local plr = game.Players.LocalPlayer
-        hideWorkspaceObjects(plr)
-        task.wait()
-
-        task.spawn(function()
-            while _G.test do
-                task.wait()
-                local success, err = pcall(function()
-                    ensureGroundPart()
-                    local plr = game.Players.LocalPlayer
-                    local chr = plr.Character
-                    local seat = chr.Humanoid.SeatPart
-                    local car = seat.Parent
-                    getfenv().car = car
-                    car.PrimaryPart = car.Body:FindFirstChild("#Weight")
-
-                    local locations
-                    local maxdistance = math.huge
-                    for i, v in pairs(workspace:GetChildren()) do
-                        if v.Name == "" and v:FindFirstChild("Highlight") then
-                            local dist = (plr.Character.PrimaryPart.Position - v.WorldPivot.Position).magnitude
-                            if dist < maxdistance then
-                                maxdistance = dist
-                                locations = v
-                            end
-                        end
-                    end
-
-                    if locations then
-                        tweenToLocation(car, locations, plr)
-                    elseif not locations and workspace:FindFirstChild("GiftPickup") then
-                        repeat
-                            task.wait()
-                            car.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
-                            car:PivotTo(CFrame.new(workspace.GiftPickup.WorldPivot.Position) + Vector3.new(0, 5, 0))
-                        until reachedMax(car)
-                    end
-                end)
-
-                if not success then
-                    warn("Auto Deliver erreur : " .. tostring(err))
-                    task.wait(2)
-                end
-            end
-        end)
-    else
-        if getfenv().tween then getfenv().tween:Cancel() end
-        restoreWorkspaceObjects()
-    end
-end)
-
--- ═══════════════════════════════════════
---         TAB 2 — VISUEL
--- ═══════════════════════════════════════
-local tab2 = Window:AddTab("Visuel")
-
-tab2:AddLabel("== Options Visuelles ==")
-tab2:AddSeparator("Écran")
-
--- Toggle Black Screen
-tab2:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
-    if state then
-        blackScreen = Instance.new("ScreenGui")
-        blackScreen.Name = "BlackScreen"
-        blackScreen.DisplayOrder = -1000
-        blackScreen.Parent = game.CoreGui
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(1, 0, 1, 0)
-        frame.BackgroundColor3 = Color3.new(0, 0, 0)
-        frame.BorderSizePixel = 0
-        frame.Parent = blackScreen
-    else
-        if blackScreen then
-            blackScreen:Destroy()
-            blackScreen = nil
-        end
-    end
+-- ⚠️ CORRECTION : on passe buildGUI en callback
+-- pour qu'il s'exécute APRÈS validation de la clé
+local Window = Library:CreateWindow("Midnight Chasers", true, function(windowRef)
+    buildGUI(windowRef)
 end)
