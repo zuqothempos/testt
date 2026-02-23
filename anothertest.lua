@@ -136,16 +136,16 @@ end
 -- ═══════════════════════════════════════
 --         VARIABLES GLOBALES
 -- ═══════════════════════════════════════
-local blackScreen    = nil
-local modeActuel     = "Normal"
+local blackScreen     = nil
+local modeActuel      = "Normal"
 local speedMultiplier = {Normal = 1, Rapide = 1.5, Turbo = 2.5}
 
--- Wind.ez variables
+-- Wind.ez
 local CollectionService = game:GetService("CollectionService")
-local TAG            = "windnocollide"
-local isWindOn       = false
-local windConnections = {}
-local npcTransparency = 0.6
+local TAG               = "windnocollide"
+local isWindOn          = false
+local windConnections   = {}
+local npcTransparency   = 0.6
 
 local frames = {
     CFrame.new(105.419128, -26.0098934, 7965.37988, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
@@ -198,14 +198,10 @@ end
 
 local function applyToFolder(folder)
     for _, obj in ipairs(folder:GetDescendants()) do
-        if shouldAffect(obj) then
-            disableCollision(obj)
-        end
+        if shouldAffect(obj) then disableCollision(obj) end
     end
     local c = folder.DescendantAdded:Connect(function(newObj)
-        if isWindOn and shouldAffect(newObj) then
-            disableCollision(newObj)
-        end
+        if isWindOn and shouldAffect(newObj) then disableCollision(newObj) end
     end)
     table.insert(windConnections, c)
 end
@@ -214,9 +210,7 @@ local function enableWind()
     local npc = workspace:FindFirstChild("NPCVehicles")
     if npc then applyToFolder(npc) end
     for _, v in ipairs(workspace:GetChildren()) do
-        if v:IsA("Folder") and tonumber(v.Name) then
-            applyToFolder(v)
-        end
+        if v:IsA("Folder") and tonumber(v.Name) then applyToFolder(v) end
     end
     local wsC = workspace.ChildAdded:Connect(function(child)
         if not isWindOn then return end
@@ -231,10 +225,29 @@ local function disableWind()
     for _, part in ipairs(CollectionService:GetTagged(TAG)) do
         restoreCollision(part)
     end
-    for _, c in ipairs(windConnections) do
-        c:Disconnect()
-    end
+    for _, c in ipairs(windConnections) do c:Disconnect() end
     windConnections = {}
+end
+
+-- ═══════════════════════════════════════
+--         DÉTECTION DU SYSTÈME
+-- ═══════════════════════════════════════
+local function getSystem()
+    local UIS = game:GetService("UserInputService")
+    if UIS.TouchEnabled and not UIS.KeyboardEnabled then
+        local ok, inset = pcall(function()
+            return game:GetService("GuiService"):GetGuiInset()
+        end)
+        if ok and inset.Y > 20 then
+            return "📱 iOS"
+        else
+            return "📱 Android"
+        end
+    elseif UIS.KeyboardEnabled and UIS.TouchEnabled then
+        return "💻 PC (tactile)"
+    else
+        return "🖥️ PC"
+    end
 end
 
 -- ═══════════════════════════════════════
@@ -246,7 +259,51 @@ local function buildGUI(W)
     --         TAB 1 — HOME
     -- ─────────────────────────────
     local tab1 = W:AddTab("Home")
+
+    local keyRole   = _G.MNCKeyRole   or "Free"
+    local keyExpire = _G.MNCKeyExpire or "Inconnu"
+    local system    = getSystem()
+
     tab1:AddLabel("== Welcome to MNCStorm Bêta ❤ ==")
+    tab1:AddSeparator("Informations")
+
+    -- Système
+    tab1:AddButton("Système : " .. system, "Plateforme détectée automatiquement", function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Système",
+            Text  = "Tu joues sur : " .. system,
+            Duration = 4,
+        })
+    end)
+
+    -- Expiration clé
+    tab1:AddButton("Clé expire : " .. keyExpire, "Date d'expiration de ta clé", function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Expiration",
+            Text  = "Ta clé " .. keyRole .. " expire le : " .. keyExpire,
+            Duration = 4,
+        })
+    end)
+
+    -- Rôle
+    tab1:AddButton("Rôle : " .. keyRole, "Ton niveau d'accès actuel", function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Rôle",
+            Text  = "Tu es connecté en tant que : " .. keyRole,
+            Duration = 4,
+        })
+    end)
+
+    tab1:AddSeparator("Communauté")
+
+    -- Bouton J'aime
+    tab1:AddButton("❤️  J'aime MNCStorm !", "Clique pour montrer ton soutien !", function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "❤️ Merci !",
+            Text  = "Tu as aimé MNCStorm ! Merci pour ton soutien ✨",
+            Duration = 5,
+        })
+    end)
 
     -- ─────────────────────────────
     --         TAB 2 — FARM
@@ -357,8 +414,6 @@ local function buildGUI(W)
     local tab3 = W:AddTab("Visuel")
 
     tab3:AddLabel("== Options Visuelles ==")
-
-    -- ── ÉCRAN ──
     tab3:AddSeparator("Écran")
 
     tab3:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
@@ -380,13 +435,10 @@ local function buildGUI(W)
         end
     end)
 
-    -- ── VÉHICULES NPC (WIND.EZ) ──
     tab3:AddSeparator("Véhicules NPC")
 
-    -- Slider transparence — de 0 à 10 (= 0.0 à 1.0)
     tab3:AddSlider("Transparence NPC", "0 = opaque  |  10 = invisible", 0, 10, 6, function(value)
         npcTransparency = value / 10
-        -- Mise à jour en temps réel si wind.ez est actif
         if isWindOn then
             for _, part in ipairs(CollectionService:GetTagged(TAG)) do
                 part.Transparency = npcTransparency
@@ -413,6 +465,3 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/zuqot
 Library:CreateWindow("Midnight Chasers", true, function(W)
     buildGUI(W)
 end)
-
-
-
