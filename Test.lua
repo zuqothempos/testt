@@ -10,31 +10,30 @@ Library.__index = Library
 -- ═══════════════════════════════════════
 local KeySystem = {
     PremiumKeys = {
-        "PREMIUM-XXXX-YYYY-ZZZZ",
-        "PREMIUM-AAAA-BBBB-CCCC",
+        ["PREMIUM-XXXX-YYYY-ZZZZ"] = { expire = "31/12/2025" },
+        ["PREMIUM-AAAA-BBBB-CCCC"] = { expire = "15/06/2025" },
     },
     AdminKeys = {
-        "ADMIN-1234-5678-9012",
-        "ADMIN-ABCD-EFGH-IJKL",
-        "zvqo",
+        ["ADMIN-1234-5678-9012"]  = { expire = "Jamais" },
+        ["ADMIN-ABCD-EFGH-IJKL"] = { expire = "Jamais" },
     },
     FreeKeys = {
-        "FREE-0000-0000-0001",
-        "FREE-0000-0000-0002",
+        ["FREE-0000-0000-0001"]   = { expire = "01/03/2025" },
+        ["FREE-0000-0000-0002"]   = { expire = "01/03/2025" },
     }
 }
 
 local function checkKey(key)
-    for _, v in ipairs(KeySystem.AdminKeys) do
-        if v == key then return "Admin" end
+    for k, data in pairs(KeySystem.AdminKeys) do
+        if k == key then return "Admin", data.expire end
     end
-    for _, v in ipairs(KeySystem.PremiumKeys) do
-        if v == key then return "Premium" end
+    for k, data in pairs(KeySystem.PremiumKeys) do
+        if k == key then return "Premium", data.expire end
     end
-    for _, v in ipairs(KeySystem.FreeKeys) do
-        if v == key then return "Free" end
+    for k, data in pairs(KeySystem.FreeKeys) do
+        if k == key then return "Free", data.expire end
     end
-    return nil
+    return nil, nil
 end
 
 local KeyColors = {
@@ -137,18 +136,18 @@ local function makeLabel(parent, text, size, pos, font, textSize, color, align)
     return l
 end
 
--- ✅ BUG #1 CORRIGÉ : variables séparées, nil check ajouté
+-- ✅ makeDraggable corrigé
 local function makeDraggable(frame, handle)
     local dragging = false
     local dragStart = nil
-    local startPos = nil
+    local startPos  = nil
     handle = handle or frame
 
     handle.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
+            dragging  = true
             dragStart = input.Position
-            startPos = frame.Position
+            startPos  = frame.Position
         end
     end)
 
@@ -206,11 +205,11 @@ local function showKeyScreen(callback)
         Position = UDim2.new(0.5, -180, 0.5, -105)
     }, 0.4, Enum.EasingStyle.Back)
 
-    makeLabel(kf, "Welcome to MNCStorm 🏎 ",
+    makeLabel(kf, "🔑  Entrez votre clé",
         UDim2.new(1, 0, 0, 48), UDim2.new(0, 0, 0, 0),
         Enum.Font.GothamBold, 16, CONFIG.Text)
 
-    makeLabel(kf, "Please enter your key :) !",
+    makeLabel(kf, "Clé Free / Premium / Admin",
         UDim2.new(1, -20, 0, 20), UDim2.new(0, 10, 0, 46),
         Enum.Font.Gotham, 11, CONFIG.TextDim)
 
@@ -253,8 +252,13 @@ local function showKeyScreen(callback)
     addCorner(validateBtn, UDim.new(0, 6))
 
     validateBtn.MouseButton1Click:Connect(function()
-        local role = checkKey(inputBox.Text)
+        -- ✅ checkKey retourne aussi l'expiration
+        local role, expire = checkKey(inputBox.Text)
         if role then
+            -- Stocker dans _G pour que buildGUI y accède
+            _G.MNCKeyRole   = role
+            _G.MNCKeyExpire = expire or "Jamais"
+
             tween(validateBtn, {BackgroundColor3 = CONFIG.ToggleOn}, 0.2)
             validateBtn.Text = "✓ Accès autorisé"
             task.delay(0.8, function()
@@ -443,7 +447,7 @@ function Library:CreateWindow(title, requireKey, onReady)
         addListLayout(tabBar, 4, Enum.FillDirection.Horizontal)
         addPadding(tabBar, 4)
 
-        -- Content area
+        -- Content
         local contentY = tabBarY + CONFIG.TabHeight
         local contentArea = Instance.new("Frame")
         contentArea.Size = UDim2.new(1, 0, 1, -contentY)
@@ -501,7 +505,6 @@ function Library:CreateWindow(title, requireKey, onReady)
             if #Window._tabs == 0 then activate() end
             table.insert(Window._tabs, {btn = tabBtn, frame = scroll})
 
-            -- ─────────────────────────
             local function makeElement(labelText, descText)
                 local c = Instance.new("Frame")
                 c.Size = UDim2.new(1, -16, 0, CONFIG.ElementHeight)
@@ -650,7 +653,6 @@ function Library:CreateWindow(title, requireKey, onReady)
                 sfill.Parent = sbg
                 addCorner(sfill, UDim.new(1, 0))
 
-                -- ✅ BUG SLIDER CORRIGÉ : zone de clic élargie
                 local sBtn = Instance.new("TextButton")
                 sBtn.Size = UDim2.new(1, 0, 3, 0)
                 sBtn.Position = UDim2.new(0, 0, -1, 0)
@@ -794,7 +796,7 @@ function Library:CreateWindow(title, requireKey, onReady)
             return Tab
         end
 
-        -- ✅ BUG #2 CORRIGÉ : onReady appelé ici APRÈS que Window:AddTab soit défini
+        -- ✅ onReady appelé après que Window:AddTab soit défini
         if onReady then
             onReady(Window)
         end
