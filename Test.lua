@@ -11,7 +11,7 @@ Library.__index = Library
 local KeySystem = {
     PremiumKeys = {
         ["PREMIUM-XXXX-YYYY-ZZZZ"] = { expire = "31/12/2026" },
-        ["PREMIUM-AAAA-BBBB-CCCC"] = { expire = "15/06/2026" },
+        ["PREMIUM-AAAA-BBBB-CCCC"] = { expire = "22/02/2026" },
     },
     AdminKeys = {
         ["ADMIN-1234-5678-9012"]  = { expire = "Jamais" },
@@ -869,3 +869,4 @@ function Library:CreateWindow(title, requireKey, onReady)
 end
 
 return Library
+
