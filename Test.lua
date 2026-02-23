@@ -1,39 +1,61 @@
 -- ═══════════════════════════════════════
---        MA BIBLIOTHÈQUE GUI - v2.2
+--        MA BIBLIOTHÈQUE GUI - v2.3
 -- ═══════════════════════════════════════
 
 local Library = {}
 Library.__index = Library
 
 -- ═══════════════════════════════════════
---         SYSTÈME DE CLÉS
+--         SYSTÈME DE CLÉS + EXPIRATION
 -- ═══════════════════════════════════════
 local KeySystem = {
     PremiumKeys = {
-        ["PREMIUM-XXXX-YYYY-ZZZZ"] = { expire = "31/12/2025" },
-        ["PREMIUM-AAAA-BBBB-CCCC"] = { expire = "15/06/2025" },
+        ["PREMIUM-XXXX-YYYY-ZZZZ"] = { expire = "31/12/2026" },
+        ["PREMIUM-AAAA-BBBB-CCCC"] = { expire = "15/06/2026" },
     },
     AdminKeys = {
         ["ADMIN-1234-5678-9012"]  = { expire = "Jamais" },
         ["ADMIN-ABCD-EFGH-IJKL"] = { expire = "Jamais" },
     },
     FreeKeys = {
-        ["FREE-0000-0000-0001"]   = { expire = "01/03/2025" },
-        ["FREE-0000-0000-0002"]   = { expire = "01/03/2025" },
+        ["FREE-0000-0000-0001"]   = { expire = "01/12/2026" },
+        ["FREE-0000-0000-0002"]   = { expire = "01/12/2026" },
     }
 }
 
+-- Vérifie si une date "JJ/MM/AAAA" est expirée
+local function isExpired(dateStr)
+    if dateStr == "Jamais" then return false end
+    local d, m, y = dateStr:match("(%d+)/(%d+)/(%d+)")
+    if not d then return false end
+    local now = os.date("*t")
+    d, m, y = tonumber(d), tonumber(m), tonumber(y)
+    if y < now.year then return true end
+    if y == now.year and m < now.month then return true end
+    if y == now.year and m == now.month and d < now.day then return true end
+    return false
+end
+
 local function checkKey(key)
     for k, data in pairs(KeySystem.AdminKeys) do
-        if k == key then return "Admin", data.expire end
+        if k == key then
+            if isExpired(data.expire) then return nil, nil, "expired" end
+            return "Admin", data.expire
+        end
     end
     for k, data in pairs(KeySystem.PremiumKeys) do
-        if k == key then return "Premium", data.expire end
+        if k == key then
+            if isExpired(data.expire) then return nil, nil, "expired" end
+            return "Premium", data.expire
+        end
     end
     for k, data in pairs(KeySystem.FreeKeys) do
-        if k == key then return "Free", data.expire end
+        if k == key then
+            if isExpired(data.expire) then return nil, nil, "expired" end
+            return "Free", data.expire
+        end
     end
-    return nil, nil
+    return nil, nil, "invalid"
 end
 
 local KeyColors = {
@@ -66,6 +88,7 @@ local CONFIG = {
     Border        = Color3.fromRGB(60, 60, 90),
     Dropdown      = Color3.fromRGB(28, 28, 42),
     ProfileBg     = Color3.fromRGB(25, 25, 40),
+    InfoBg        = Color3.fromRGB(28, 28, 45),
     WindowWidth   = 520,
     WindowHeight  = 400,
     ProfileHeight = 70,
@@ -136,7 +159,6 @@ local function makeLabel(parent, text, size, pos, font, textSize, color, align)
     return l
 end
 
--- ✅ makeDraggable corrigé
 local function makeDraggable(frame, handle)
     local dragging = false
     local dragStart = nil
@@ -252,13 +274,10 @@ local function showKeyScreen(callback)
     addCorner(validateBtn, UDim.new(0, 6))
 
     validateBtn.MouseButton1Click:Connect(function()
-        -- ✅ checkKey retourne aussi l'expiration
-        local role, expire = checkKey(inputBox.Text)
+        local role, expire, reason = checkKey(inputBox.Text)
         if role then
-            -- Stocker dans _G pour que buildGUI y accède
             _G.MNCKeyRole   = role
             _G.MNCKeyExpire = expire or "Jamais"
-
             tween(validateBtn, {BackgroundColor3 = CONFIG.ToggleOn}, 0.2)
             validateBtn.Text = "✓ Accès autorisé"
             task.delay(0.8, function()
@@ -272,8 +291,14 @@ local function showKeyScreen(callback)
                 end)
             end)
         else
-            errLabel.Text = "❌ Clé invalide, réessayez."
-            tween(inputBg, {BackgroundColor3 = Color3.fromRGB(80, 30, 30)}, 0.1)
+            -- ✅ Message différent si clé expirée ou invalide
+            if reason == "expired" then
+                errLabel.Text = "⏰ Clé expirée ! Contactez l'admin."
+                tween(inputBg, {BackgroundColor3 = Color3.fromRGB(80, 50, 0)}, 0.1)
+            else
+                errLabel.Text = "❌ Clé invalide, réessayez."
+                tween(inputBg, {BackgroundColor3 = Color3.fromRGB(80, 30, 30)}, 0.1)
+            end
             task.delay(0.6, function()
                 tween(inputBg, {BackgroundColor3 = CONFIG.Element}, 0.3)
             end)
@@ -463,12 +488,12 @@ function Library:CreateWindow(title, requireKey, onReady)
             local Tab = {}
 
             local tabBtn = Instance.new("TextButton")
-            tabBtn.Size = UDim2.new(0, 90, 1, -6)
+            tabBtn.Size = UDim2.new(0, 80, 1, -6)
             tabBtn.BackgroundColor3 = CONFIG.TabInactive
             tabBtn.Text = tabName
             tabBtn.TextColor3 = CONFIG.TextDim
             tabBtn.Font = Enum.Font.GothamSemibold
-            tabBtn.TextSize = 12
+            tabBtn.TextSize = 11
             tabBtn.BorderSizePixel = 0
             tabBtn.Parent = tabBar
             addCorner(tabBtn, UDim.new(0, 5))
@@ -562,6 +587,37 @@ function Library:CreateWindow(title, requireKey, onReady)
                     sl.TextSize = 10
                     sl.BorderSizePixel = 0
                     sl.Parent = sep
+                end
+            end
+
+            -- ✅ AddInfo : ligne d'info avec icône + valeur dynamique
+            function Tab:AddInfo(icon, labelText, defaultValue)
+                local c = Instance.new("Frame")
+                c.Size = UDim2.new(1, -16, 0, CONFIG.ElementHeight)
+                c.BackgroundColor3 = CONFIG.InfoBg
+                c.BorderSizePixel = 0
+                c.Parent = scroll
+                addCorner(c)
+                addStroke(c, CONFIG.Border, 1)
+
+                -- Icône
+                makeLabel(c, icon,
+                    UDim2.new(0, 28, 1, 0), UDim2.new(0, 6, 0, 0),
+                    Enum.Font.Gotham, 14, CONFIG.Text)
+
+                -- Label fixe
+                makeLabel(c, labelText,
+                    UDim2.new(0.45, 0, 1, 0), UDim2.new(0, 36, 0, 0),
+                    Enum.Font.GothamSemibold, 12, CONFIG.TextDim, Enum.TextXAlignment.Left)
+
+                -- Valeur dynamique (à droite)
+                local valLbl = makeLabel(c, tostring(defaultValue or "—"),
+                    UDim2.new(0.4, 0, 1, 0), UDim2.new(0.58, 0, 0, 0),
+                    Enum.Font.GothamBold, 12, CONFIG.TabActive, Enum.TextXAlignment.Right)
+
+                -- Retourne une fonction pour mettre à jour la valeur
+                return function(newValue)
+                    valLbl.Text = tostring(newValue)
                 end
             end
 
@@ -669,7 +725,7 @@ function Library:CreateWindow(title, requireKey, onReady)
                     if not sliding then return end
                     local mouse = UserInputService:GetMouseLocation()
                     local abs = sbg.AbsolutePosition
-                    local sz = sbg.AbsoluteSize
+                    local sz  = sbg.AbsoluteSize
                     local pct = math.clamp((mouse.X - abs.X) / sz.X, 0, 1)
                     value = math.floor(min + (max - min) * pct)
                     sfill.Size = UDim2.new(pct, 0, 1, 0)
@@ -796,7 +852,6 @@ function Library:CreateWindow(title, requireKey, onReady)
             return Tab
         end
 
-        -- ✅ onReady appelé après que Window:AddTab soit défini
         if onReady then
             onReady(Window)
         end
@@ -814,5 +869,3 @@ function Library:CreateWindow(title, requireKey, onReady)
 end
 
 return Library
-
-
