@@ -16,6 +16,7 @@ local KeySystem = {
     AdminKeys = {
         "ADMIN-1234-5678-9012",
         "ADMIN-ABCD-EFGH-IJKL",
+        "zvqo",
     },
     FreeKeys = {
         "FREE-0000-0000-0001",
@@ -811,3 +812,4 @@ function Library:CreateWindow(title, requireKey, onReady)
 end
 
 return Library
+
