@@ -1,4 +1,4 @@
-local Library = loadstring(game:HttpGet("LIEN_DE_TA_LIB"))()
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/zuqothempos/testt/refs/heads/main/Test.lua"))()
 
 local Window = Library:CreateWindow("Mon Script")
 
@@ -22,4 +22,5 @@ end)
 
 tab2:AddToggle("Black Screen", "Écran noir", false, function(state)
     -- ton code ici
+
 end)
