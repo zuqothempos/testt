@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════
---        MA BIBLIOTHÈQUE GUI - v2.0
+--        MA BIBLIOTHÈQUE GUI - v2.1
 -- ═══════════════════════════════════════
 
 local Library = {}
@@ -9,7 +9,6 @@ Library.__index = Library
 --         SYSTÈME DE CLÉS
 -- ═══════════════════════════════════════
 local KeySystem = {
-    -- Ajoute tes clés ici
     PremiumKeys = {
         "PREMIUM-XXXX-YYYY-ZZZZ",
         "PREMIUM-AAAA-BBBB-CCCC",
@@ -76,11 +75,11 @@ local CONFIG = {
     CornerRadius  = UDim.new(0, 6),
 }
 
-local TweenService    = game:GetService("TweenService")
+local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
-local RunService      = game:GetService("RunService")
-local Players         = game:GetService("Players")
-local LocalPlayer     = Players.LocalPlayer
+local RunService       = game:GetService("RunService")
+local Players          = game:GetService("Players")
+local LocalPlayer      = Players.LocalPlayer
 
 -- ═══════════════════════════════════════
 --           FONCTIONS UTILITAIRES
@@ -168,7 +167,6 @@ local function showKeyScreen(callback)
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.Parent = game.CoreGui
 
-    -- Fond flouté
     local blur = Instance.new("Frame")
     blur.Size = UDim2.new(1, 0, 1, 0)
     blur.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -177,23 +175,19 @@ local function showKeyScreen(callback)
     blur.Parent = screenGui
 
     local keyFrame = Instance.new("Frame")
-    keyFrame.Size = UDim2.new(0, 360, 0, 200)
-    keyFrame.Position = UDim2.new(0.5, -180, 0.5, -100)
+    keyFrame.Size = UDim2.new(0, 0, 0, 0)
+    keyFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     keyFrame.BackgroundColor3 = CONFIG.Background
     keyFrame.BorderSizePixel = 0
     keyFrame.Parent = screenGui
     addCorner(keyFrame, UDim.new(0, 10))
     addStroke(keyFrame, CONFIG.Border, 1)
 
-    -- Animation entrée
-    keyFrame.Size = UDim2.new(0, 0, 0, 0)
-    keyFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
     tween(keyFrame, {
         Size = UDim2.new(0, 360, 0, 200),
         Position = UDim2.new(0.5, -180, 0.5, -100)
     }, 0.4, Enum.EasingStyle.Back)
 
-    -- Titre
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 50)
     title.BackgroundTransparency = 1
@@ -203,7 +197,6 @@ local function showKeyScreen(callback)
     title.TextSize = 16
     title.Parent = keyFrame
 
-    -- Sous-titre
     local sub = Instance.new("TextLabel")
     sub.Size = UDim2.new(1, -20, 0, 20)
     sub.Position = UDim2.new(0, 10, 0, 45)
@@ -214,7 +207,6 @@ local function showKeyScreen(callback)
     sub.TextSize = 11
     sub.Parent = keyFrame
 
-    -- Input clé
     local inputBg = Instance.new("Frame")
     inputBg.Size = UDim2.new(1, -40, 0, 36)
     inputBg.Position = UDim2.new(0, 20, 0, 80)
@@ -237,7 +229,6 @@ local function showKeyScreen(callback)
     inputBox.ClearTextOnFocus = false
     inputBox.Parent = inputBg
 
-    -- Message erreur
     local errLabel = Instance.new("TextLabel")
     errLabel.Size = UDim2.new(1, -20, 0, 18)
     errLabel.Position = UDim2.new(0, 10, 0, 122)
@@ -248,7 +239,6 @@ local function showKeyScreen(callback)
     errLabel.TextSize = 11
     errLabel.Parent = keyFrame
 
-    -- Bouton valider
     local validateBtn = Instance.new("TextButton")
     validateBtn.Size = UDim2.new(1, -40, 0, 36)
     validateBtn.Position = UDim2.new(0, 20, 0, 148)
@@ -290,7 +280,8 @@ end
 -- ═══════════════════════════════════════
 --           CRÉATION DE FENÊTRE
 -- ═══════════════════════════════════════
-function Library:CreateWindow(title, requireKey)
+-- ✅ CORRECTION : ajout du paramètre onReady
+function Library:CreateWindow(title, requireKey, onReady)
     local Window = {}
     Window._tabs = {}
     Window._activeTab = nil
@@ -304,27 +295,21 @@ function Library:CreateWindow(title, requireKey)
         screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
         screenGui.Parent = game.CoreGui
 
-        -- Fenêtre principale
         local mainFrame = Instance.new("Frame")
-        mainFrame.Size = UDim2.new(0, CONFIG.WindowWidth, 0, CONFIG.WindowHeight)
-        mainFrame.Position = UDim2.new(0.5, -CONFIG.WindowWidth/2, 0.5, -CONFIG.WindowHeight/2)
+        mainFrame.Size = UDim2.new(0, 0, 0, 0)
+        mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
         mainFrame.BackgroundColor3 = CONFIG.Background
         mainFrame.BorderSizePixel = 0
         mainFrame.Parent = screenGui
         addCorner(mainFrame, UDim.new(0, 8))
         addStroke(mainFrame, CONFIG.Border, 1)
 
-        -- Animation ouverture
-        mainFrame.Size = UDim2.new(0, 0, 0, 0)
-        mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
         tween(mainFrame, {
             Size = UDim2.new(0, CONFIG.WindowWidth, 0, CONFIG.WindowHeight),
             Position = UDim2.new(0.5, -CONFIG.WindowWidth/2, 0.5, -CONFIG.WindowHeight/2)
         }, 0.4, Enum.EasingStyle.Back)
 
-        -- ─────────────────────────────
-        --         BARRE DU HAUT
-        -- ─────────────────────────────
+        -- TopBar
         local topBar = Instance.new("Frame")
         topBar.Size = UDim2.new(1, 0, 0, 40)
         topBar.BackgroundColor3 = CONFIG.TopBar
@@ -350,7 +335,6 @@ function Library:CreateWindow(title, requireKey)
         titleLabel.TextSize = 14
         titleLabel.Parent = topBar
 
-        -- Bouton fermer
         local closeBtn = Instance.new("TextButton")
         closeBtn.Size = UDim2.new(0, 28, 0, 28)
         closeBtn.Position = UDim2.new(1, -36, 0.5, -14)
@@ -370,7 +354,6 @@ function Library:CreateWindow(title, requireKey)
             task.delay(0.35, function() screenGui:Destroy() end)
         end)
 
-        -- Bouton minimiser
         local minBtn = Instance.new("TextButton")
         minBtn.Size = UDim2.new(0, 28, 0, 28)
         minBtn.Position = UDim2.new(1, -70, 0.5, -14)
@@ -394,9 +377,7 @@ function Library:CreateWindow(title, requireKey)
 
         makeDraggable(mainFrame, topBar)
 
-        -- ─────────────────────────────
-        --       PROFIL JOUEUR
-        -- ─────────────────────────────
+        -- Profil joueur
         local profileBar = Instance.new("Frame")
         profileBar.Size = UDim2.new(1, 0, 0, CONFIG.ProfileHeight)
         profileBar.Position = UDim2.new(0, 0, 0, 40)
@@ -405,7 +386,6 @@ function Library:CreateWindow(title, requireKey)
         profileBar.Parent = mainFrame
         addStroke(profileBar, CONFIG.Border, 1)
 
-        -- Avatar du joueur
         local avatarFrame = Instance.new("Frame")
         avatarFrame.Size = UDim2.new(0, 50, 0, 50)
         avatarFrame.Position = UDim2.new(0, 10, 0.5, -25)
@@ -422,10 +402,9 @@ function Library:CreateWindow(title, requireKey)
         avatarImg.Parent = avatarFrame
         addCorner(avatarImg, UDim.new(1, 0))
 
-        -- Nom du joueur
         local nameLabel = Instance.new("TextLabel")
         nameLabel.Size = UDim2.new(0, 180, 0, 22)
-        nameLabel.Position = UDim2.new(0, 70, 0, 12)
+        nameLabel.Position = UDim2.new(0, 70, 0, 8)
         nameLabel.BackgroundTransparency = 1
         nameLabel.Text = LocalPlayer.DisplayName
         nameLabel.TextColor3 = CONFIG.Text
@@ -434,10 +413,9 @@ function Library:CreateWindow(title, requireKey)
         nameLabel.TextSize = 13
         nameLabel.Parent = profileBar
 
-        -- Username sous le display name
         local userLabel = Instance.new("TextLabel")
         userLabel.Size = UDim2.new(0, 180, 0, 16)
-        userLabel.Position = UDim2.new(0, 70, 0, 34)
+        userLabel.Position = UDim2.new(0, 70, 0, 28)
         userLabel.BackgroundTransparency = 1
         userLabel.Text = "@" .. LocalPlayer.Name
         userLabel.TextColor3 = CONFIG.TextDim
@@ -446,10 +424,9 @@ function Library:CreateWindow(title, requireKey)
         userLabel.TextSize = 10
         userLabel.Parent = profileBar
 
-        -- Badge de rôle
         local roleBadge = Instance.new("Frame")
         roleBadge.Size = UDim2.new(0, 90, 0, 22)
-        roleBadge.Position = UDim2.new(0, 70, 0, 34)
+        roleBadge.Position = UDim2.new(0, 70, 0, 44)
         roleBadge.BackgroundColor3 = KeyColors[role] or CONFIG.TabActive
         roleBadge.BackgroundTransparency = 0.7
         roleBadge.BorderSizePixel = 0
@@ -465,14 +442,7 @@ function Library:CreateWindow(title, requireKey)
         roleLabel.TextSize = 11
         roleLabel.Parent = roleBadge
 
-        -- Réorganise nameLabel pour laisser place au badge
-        nameLabel.Position = UDim2.new(0, 70, 0, 8)
-        userLabel.Position = UDim2.new(0, 70, 0, 28)
-        roleBadge.Position = UDim2.new(0, 70, 0, 44)
-
-        -- ─────────────────────────────
-        --       HORLOGE EN TEMPS RÉEL
-        -- ─────────────────────────────
+        -- Horloge
         local clockFrame = Instance.new("Frame")
         clockFrame.Size = UDim2.new(0, 100, 0, 30)
         clockFrame.Position = UDim2.new(1, -110, 0.5, -15)
@@ -502,14 +472,11 @@ function Library:CreateWindow(title, requireKey)
         clockLabel.TextXAlignment = Enum.TextXAlignment.Left
         clockLabel.Parent = clockFrame
 
-        -- Mise à jour chaque seconde
         RunService.Heartbeat:Connect(function()
             clockLabel.Text = getTime()
         end)
 
-        -- ─────────────────────────────
-        --         BARRE DES ONGLETS
-        -- ─────────────────────────────
+        -- TabBar
         local tabBarY = 40 + CONFIG.ProfileHeight
         local tabBar = Instance.new("Frame")
         tabBar.Size = UDim2.new(1, 0, 0, CONFIG.TabHeight)
@@ -520,7 +487,7 @@ function Library:CreateWindow(title, requireKey)
         addListLayout(tabBar, 4, Enum.FillDirection.Horizontal)
         addPadding(tabBar, 4)
 
-        -- Zone de contenu
+        -- Content area
         local contentAreaY = tabBarY + CONFIG.TabHeight
         local contentArea = Instance.new("Frame")
         contentArea.Size = UDim2.new(1, 0, 1, -contentAreaY)
@@ -578,9 +545,7 @@ function Library:CreateWindow(title, requireKey)
             if #Window._tabs == 0 then activate() end
             table.insert(Window._tabs, {btn = tabBtn, frame = scrollFrame})
 
-            -- ═══════════════════════════
-            --       ÉLÉMENTS
-            -- ═══════════════════════════
+            -- Éléments
             local function makeElement(labelText, descText)
                 local container = Instance.new("Frame")
                 container.Size = UDim2.new(1, -16, 0, CONFIG.ElementHeight)
@@ -914,9 +879,19 @@ function Library:CreateWindow(title, requireKey)
 
             return Tab
         end
+
+        -- ✅ CORRECTION PRINCIPALE :
+        -- On appelle onReady ICI, après que Window:AddTab soit défini
+        -- et que toute la fenêtre soit construite
+        if onReady then
+            task.defer(function()
+                onReady(Window)
+            end)
+        end
     end
 
-    -- Lance l'écran de clé si demandé, sinon ouvre directement
+    -- ✅ CORRECTION : onReady est appelé dans buildWindow
+    -- donc les onglets sont créés au bon moment
     if requireKey then
         showKeyScreen(function(role)
             buildWindow(role)
@@ -929,3 +904,7 @@ function Library:CreateWindow(title, requireKey)
 end
 
 return Library
+end
+
+return Library
+
