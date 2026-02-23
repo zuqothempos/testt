@@ -147,6 +147,11 @@ local isWindOn          = false
 local windConnections   = {}
 local npcTransparency   = 0.6
 
+-- Stats session
+local sessionStart  = nil
+local timerRunning  = false
+local moneyStart    = nil
+
 local frames = {
     CFrame.new(105.419128, -26.0098934, 7965.37988, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
     CFrame.new(2751.86499, -26.0098934, 3694.63354, 3.34978104e-05, 0.951051414, -0.309032798, -1, 3.34978104e-05, -5.31971455e-06, 5.31971455e-06, 0.309032798, 0.951051414),
@@ -230,6 +235,25 @@ local function disableWind()
 end
 
 -- ═══════════════════════════════════════
+--         FONCTIONS STATS
+-- ═══════════════════════════════════════
+local function getMoney()
+    local plr = game.Players.LocalPlayer
+    -- ⚠️ Modifie "leaderstats.Cash" selon le nom exact dans le jeu
+    local ok, val = pcall(function()
+        return plr.leaderstats.Cash.Value
+    end)
+    return ok and val or 0
+end
+
+local function formatTime(seconds)
+    local h = math.floor(seconds / 3600)
+    local m = math.floor((seconds % 3600) / 60)
+    local s = math.floor(seconds % 60)
+    return string.format("%02dh %02dm %02ds", h, m, s)
+end
+
+-- ═══════════════════════════════════════
 --         DÉTECTION DU SYSTÈME
 -- ═══════════════════════════════════════
 local function getSystem()
@@ -267,36 +291,13 @@ local function buildGUI(W)
     tab1:AddLabel("== Welcome to MNCStorm Bêta ❤ ==")
     tab1:AddSeparator("Informations")
 
-    -- Système
-    tab1:AddButton("Système : " .. system, "Plateforme détectée automatiquement", function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Système",
-            Text  = "Tu joues sur : " .. system,
-            Duration = 4,
-        })
-    end)
-
-    -- Expiration clé
-    tab1:AddButton("Clé expire : " .. keyExpire, "Date d'expiration de ta clé", function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Expiration",
-            Text  = "Ta clé " .. keyRole .. " expire le : " .. keyExpire,
-            Duration = 4,
-        })
-    end)
-
-    -- Rôle
-    tab1:AddButton("Rôle : " .. keyRole, "Ton niveau d'accès actuel", function()
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Rôle",
-            Text  = "Tu es connecté en tant que : " .. keyRole,
-            Duration = 4,
-        })
-    end)
+    -- ✅ AddInfo : affichage propre sans bouton
+    tab1:AddInfo("🖥️", "Système", system)
+    tab1:AddInfo("🔑", "Rôle", keyRole)
+    tab1:AddInfo("📅", "Clé expire", keyExpire)
 
     tab1:AddSeparator("Communauté")
 
-    -- Bouton J'aime
     tab1:AddButton("❤️  J'aime MNCStorm !", "Clique pour montrer ton soutien !", function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
             Title = "❤️ Merci !",
@@ -329,6 +330,11 @@ local function buildGUI(W)
     tab2:AddToggle("Auto Farm", "Fait les trajets automatiquement", false, function(state)
         getfenv().auto = state
         if state then
+            -- Démarrage timer et snapshot argent
+            sessionStart = tick()
+            moneyStart   = getMoney()
+            timerRunning = true
+
             local plr = game.Players.LocalPlayer
             hideWorkspaceObjects(plr)
             task.wait()
@@ -353,6 +359,7 @@ local function buildGUI(W)
                 end
             end)
         else
+            timerRunning = false
             if getfenv().tween then getfenv().tween:Cancel() end
             restoreWorkspaceObjects()
         end
@@ -409,14 +416,57 @@ local function buildGUI(W)
     end)
 
     -- ─────────────────────────────
-    --         TAB 3 — VISUEL
+    --         TAB 3 — STATS
     -- ─────────────────────────────
-    local tab3 = W:AddTab("Visuel")
+    local tab3 = W:AddTab("Stats")
 
-    tab3:AddLabel("== Options Visuelles ==")
-    tab3:AddSeparator("Écran")
+    tab3:AddLabel("== Statistiques de Session ==")
+    tab3:AddSeparator("Session")
 
-    tab3:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
+    -- AddInfo retourne une fonction pour mettre à jour la valeur
+    local setTimer  = tab3:AddInfo("⏱️", "Temps actif", "00h 00m 00s")
+    local setMoney  = tab3:AddInfo("💰", "Argent gagné", "0")
+    local setStatus = tab3:AddInfo("📡", "Statut farm", "Inactif")
+
+    tab3:AddSeparator("Actions")
+
+    tab3:AddButton("🔄  Réinitialiser", "Remet le timer et l'argent à zéro", function()
+        sessionStart = tick()
+        moneyStart   = getMoney()
+        setTimer("00h 00m 00s")
+        setMoney("0")
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Stats réinitialisées",
+            Text  = "Timer et argent remis à zéro.",
+            Duration = 3,
+        })
+    end)
+
+    -- Boucle de mise à jour des stats chaque seconde
+    task.spawn(function()
+        while true do
+            task.wait(1)
+            if timerRunning and sessionStart then
+                local elapsed = tick() - sessionStart
+                setTimer(formatTime(elapsed))
+                local gained = getMoney() - (moneyStart or 0)
+                setMoney(tostring(math.max(0, gained)))
+                setStatus("✅ Actif")
+            else
+                setStatus("⛔ Inactif")
+            end
+        end
+    end)
+
+    -- ─────────────────────────────
+    --         TAB 4 — VISUEL
+    -- ─────────────────────────────
+    local tab4 = W:AddTab("Visuel")
+
+    tab4:AddLabel("== Options Visuelles ==")
+    tab4:AddSeparator("Écran")
+
+    tab4:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
         if state then
             blackScreen = Instance.new("ScreenGui")
             blackScreen.Name = "BlackScreen"
@@ -435,9 +485,9 @@ local function buildGUI(W)
         end
     end)
 
-    tab3:AddSeparator("Véhicules NPC")
+    tab4:AddSeparator("Véhicules NPC")
 
-    tab3:AddSlider("Transparence NPC", "0 = opaque  |  10 = invisible", 0, 10, 6, function(value)
+    tab4:AddSlider("Transparence NPC", "0 = opaque  |  10 = invisible", 0, 10, 6, function(value)
         npcTransparency = value / 10
         if isWindOn then
             for _, part in ipairs(CollectionService:GetTagged(TAG)) do
@@ -446,13 +496,9 @@ local function buildGUI(W)
         end
     end)
 
-    tab3:AddToggle("Wind.ez | No Collide NPC", "Désactive la collision avec les véhicules NPC", false, function(state)
+    tab4:AddToggle("Wind.ez | No Collide NPC", "Désactive la collision avec les véhicules NPC", false, function(state)
         isWindOn = state
-        if state then
-            enableWind()
-        else
-            disableWind()
-        end
+        if state then enableWind() else disableWind() end
     end)
 
 end
