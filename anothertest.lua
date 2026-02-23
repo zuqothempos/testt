@@ -156,29 +156,37 @@ local frames = {
 -- ⚠️ CORRECTION PRINCIPALE : tout le code GUI est dans
 -- une fonction appelée en CALLBACK après validation de la clé
 local function buildGUI(Window)
-
     -- ═══════════════════════════════════════
-    --         TAB 1 — AUTO FARM
+    --         TAB 1 — HOME
     -- ═══════════════════════════════════════
-    local tab1 = Window:AddTab("Farm")
+    local tab1 = Window:AddTab("Home")
+    tab1:AddLabel("== Welcome to MNCStorm Bêta ❤ ==")
+    
+    
+    
+    
+    -- ═══════════════════════════════════════
+    --         TAB 2 — AUTO FARM
+    -- ═══════════════════════════════════════
+    local tab2 = Window:AddTab("Farm")
 
-    tab1:AddLabel("== Auto Farm ==")
-    tab1:AddSeparator("Paramètres")
+    tab2:AddLabel("== Auto Farm ==")
+    tab2:AddSeparator("Paramètres")
 
-    tab1:AddSlider("Vitesse", "Vitesse du véhicule", 100, 1000, 300, function(value)
+    tab2:AddSlider("Vitesse", "Vitesse du véhicule", 100, 1000, 300, function(value)
         getfenv().speed = value * (speedMultiplier[modeActuel] or 1)
     end)
 
-    tab1:AddDropdown("Mode", {"Normal", "Rapide", "Turbo"}, function(option)
+    tab2:AddDropdown("Mode", {"Normal", "Rapide", "Turbo"}, function(option)
         modeActuel = option
         local baseSpeed = getfenv().speed or 300
         getfenv().speed = baseSpeed * (speedMultiplier[option] or 1)
         warn("Mode : " .. option .. " | Vitesse : " .. tostring(getfenv().speed))
     end)
 
-    tab1:AddSeparator("Farm Principal")
+    tab2:AddSeparator("Farm Principal")
 
-    tab1:AddToggle("Auto Farm", "Fait les trajets automatiquement", false, function(state)
+    tab2:AddToggle("Auto Farm", "Fait les trajets automatiquement", false, function(state)
         getfenv().auto = state
         if state then
             local plr = game.Players.LocalPlayer
@@ -210,9 +218,9 @@ local function buildGUI(Window)
         end
     end)
 
-    tab1:AddSeparator("Event")
+    tab2:AddSeparator("Event")
 
-    tab1:AddToggle("Auto Deliver [Event]", "Livre les colis automatiquement", false, function(state)
+    tab2:AddToggle("Auto Deliver [Event]", "Livre les colis automatiquement", false, function(state)
         _G.test = state
         if state then
             local plr = game.Players.LocalPlayer
@@ -261,14 +269,14 @@ local function buildGUI(Window)
     end)
 
     -- ═══════════════════════════════════════
-    --         TAB 2 — VISUEL
+    --         TAB 3 — VISUEL
     -- ═══════════════════════════════════════
-    local tab2 = Window:AddTab("Visuel")
+    local tab3 = Window:AddTab("Visuel")
 
-    tab2:AddLabel("== Options Visuelles ==")
-    tab2:AddSeparator("Écran")
+    tab3:AddLabel("== Options Visuelles ==")
+    tab3:AddSeparator("Écran")
 
-    tab2:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
+    tab3:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
         if state then
             blackScreen = Instance.new("ScreenGui")
             blackScreen.Name = "BlackScreen"
@@ -298,6 +306,7 @@ local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/zuqot
 local Window = Library:CreateWindow("Midnight Chasers", true, function(windowRef)
     buildGUI(windowRef)
 end)
+
 
 
 
