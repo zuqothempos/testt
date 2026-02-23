@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════
---      MIDNIGHT CHASERS - AUTO FARM
+--      MIDNIGHT CHASERS - MNCStorm Bêta
 -- ═══════════════════════════════════════
 
 -- Anti AFK
@@ -133,10 +133,19 @@ local function tweenToLocation(car, locations, plr)
     getfenv().cancelman = nil
 end
 
--- Variables globales
-local blackScreen = nil
-local modeActuel = "Normal"
+-- ═══════════════════════════════════════
+--         VARIABLES GLOBALES
+-- ═══════════════════════════════════════
+local blackScreen    = nil
+local modeActuel     = "Normal"
 local speedMultiplier = {Normal = 1, Rapide = 1.5, Turbo = 2.5}
+
+-- Wind.ez variables
+local CollectionService = game:GetService("CollectionService")
+local TAG            = "windnocollide"
+local isWindOn       = false
+local windConnections = {}
+local npcTransparency = 0.6
 
 local frames = {
     CFrame.new(105.419128, -26.0098934, 7965.37988, -3.36170197e-05, 0.951051414, -0.309032798, -1, -3.36170197e-05, 5.31971455e-06, -5.31971455e-06, 0.309032798, 0.951051414),
@@ -151,24 +160,98 @@ local frames = {
 }
 
 -- ═══════════════════════════════════════
---     FONCTION QUI CONSTRUIT LA GUI
+--         FONCTIONS WIND.EZ
 -- ═══════════════════════════════════════
--- ⚠️ CORRECTION PRINCIPALE : tout le code GUI est dans
--- une fonction appelée en CALLBACK après validation de la clé
-local function buildGUI(Window)
-    -- ═══════════════════════════════════════
+local function shouldAffect(part)
+    if not part:IsA("BasePart") then return false end
+    local n = part.Name:lower()
+    if n == "part" or n == "car" then return true end
+    if part:FindFirstAncestor("NPCVehicles") then return true end
+    return false
+end
+
+local function disableCollision(part)
+    if part:GetAttribute("wind_originalcollide") == nil then
+        part:SetAttribute("wind_originalcollide", part.CanCollide)
+    end
+    if part:GetAttribute("wind_originaltransparency") == nil then
+        part:SetAttribute("wind_originaltransparency", part.Transparency)
+    end
+    part.CanCollide = false
+    part.Transparency = npcTransparency
+    CollectionService:AddTag(part, TAG)
+end
+
+local function restoreCollision(part)
+    local c = part:GetAttribute("wind_originalcollide")
+    if c ~= nil then
+        part.CanCollide = c
+        part:SetAttribute("wind_originalcollide", nil)
+    end
+    local t = part:GetAttribute("wind_originaltransparency")
+    if t ~= nil then
+        part.Transparency = t
+        part:SetAttribute("wind_originaltransparency", nil)
+    end
+    CollectionService:RemoveTag(part, TAG)
+end
+
+local function applyToFolder(folder)
+    for _, obj in ipairs(folder:GetDescendants()) do
+        if shouldAffect(obj) then
+            disableCollision(obj)
+        end
+    end
+    local c = folder.DescendantAdded:Connect(function(newObj)
+        if isWindOn and shouldAffect(newObj) then
+            disableCollision(newObj)
+        end
+    end)
+    table.insert(windConnections, c)
+end
+
+local function enableWind()
+    local npc = workspace:FindFirstChild("NPCVehicles")
+    if npc then applyToFolder(npc) end
+    for _, v in ipairs(workspace:GetChildren()) do
+        if v:IsA("Folder") and tonumber(v.Name) then
+            applyToFolder(v)
+        end
+    end
+    local wsC = workspace.ChildAdded:Connect(function(child)
+        if not isWindOn then return end
+        if child.Name == "NPCVehicles" or (child:IsA("Folder") and tonumber(child.Name)) then
+            applyToFolder(child)
+        end
+    end)
+    table.insert(windConnections, wsC)
+end
+
+local function disableWind()
+    for _, part in ipairs(CollectionService:GetTagged(TAG)) do
+        restoreCollision(part)
+    end
+    for _, c in ipairs(windConnections) do
+        c:Disconnect()
+    end
+    windConnections = {}
+end
+
+-- ═══════════════════════════════════════
+--         CONSTRUCTION GUI
+-- ═══════════════════════════════════════
+local function buildGUI(W)
+
+    -- ─────────────────────────────
     --         TAB 1 — HOME
-    -- ═══════════════════════════════════════
-    local tab1 = Window:AddTab("Home")
+    -- ─────────────────────────────
+    local tab1 = W:AddTab("Home")
     tab1:AddLabel("== Welcome to MNCStorm Bêta ❤ ==")
-    
-    
-    
-    
-    -- ═══════════════════════════════════════
-    --         TAB 2 — AUTO FARM
-    -- ═══════════════════════════════════════
-    local tab2 = Window:AddTab("Farm")
+
+    -- ─────────────────────────────
+    --         TAB 2 — FARM
+    -- ─────────────────────────────
+    local tab2 = W:AddTab("Farm")
 
     tab2:AddLabel("== Auto Farm ==")
     tab2:AddSeparator("Paramètres")
@@ -268,12 +351,14 @@ local function buildGUI(Window)
         end
     end)
 
-    -- ═══════════════════════════════════════
+    -- ─────────────────────────────
     --         TAB 3 — VISUEL
-    -- ═══════════════════════════════════════
-    local tab3 = Window:AddTab("Visuel")
+    -- ─────────────────────────────
+    local tab3 = W:AddTab("Visuel")
 
     tab3:AddLabel("== Options Visuelles ==")
+
+    -- ── ÉCRAN ──
     tab3:AddSeparator("Écran")
 
     tab3:AddToggle("Black Screen", "Rend l'écran noir pour farmer en fond", false, function(state)
@@ -294,6 +379,30 @@ local function buildGUI(Window)
             end
         end
     end)
+
+    -- ── VÉHICULES NPC (WIND.EZ) ──
+    tab3:AddSeparator("Véhicules NPC")
+
+    -- Slider transparence — de 0 à 10 (= 0.0 à 1.0)
+    tab3:AddSlider("Transparence NPC", "0 = opaque  |  10 = invisible", 0, 10, 6, function(value)
+        npcTransparency = value / 10
+        -- Mise à jour en temps réel si wind.ez est actif
+        if isWindOn then
+            for _, part in ipairs(CollectionService:GetTagged(TAG)) do
+                part.Transparency = npcTransparency
+            end
+        end
+    end)
+
+    tab3:AddToggle("Wind.ez | No Collide NPC", "Désactive la collision avec les véhicules NPC", false, function(state)
+        isWindOn = state
+        if state then
+            enableWind()
+        else
+            disableWind()
+        end
+    end)
+
 end
 
 -- ═══════════════════════════════════════
@@ -301,15 +410,9 @@ end
 -- ═══════════════════════════════════════
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/zuqothempos/testt/refs/heads/main/Test.lua"))()
 
--- ⚠️ CORRECTION : on passe buildGUI en callback
--- pour qu'il s'exécute APRÈS validation de la clé
-local Window = Library:CreateWindow("Midnight Chasers", true, function(windowRef)
-    buildGUI(windowRef)
+Library:CreateWindow("Midnight Chasers", true, function(W)
+    buildGUI(W)
 end)
-
-
-
-
 
 
 
